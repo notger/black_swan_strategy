@@ -40,6 +40,7 @@ def get_black_scholes_price(bet_long=True, s0=100.0, k=100.0, r=0.05, sigma=0.3,
 
 
 if __name__ == '__main__':
+    # TODO: Clean up, e.g. by outsourcing to the automated tests.
     assert get_black_scholes_price(bet_long=True, s0=20, k=100) > 0
     assert get_black_scholes_price(bet_long=True, s0=200, k=100) > get_black_scholes_price(bet_long=True, s0=20, k=100)
 

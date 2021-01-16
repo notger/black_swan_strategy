@@ -98,6 +98,7 @@ def load_stock_prices(path=""):
 
 
 if __name__ == '__main__':
+    # TODO: Clean up, compartimentalise, outsource and give the user a choice via input parameter.
 
     horizon = int(252/4)
     out_of_money_factor = 0.7
