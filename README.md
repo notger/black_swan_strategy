@@ -10,3 +10,4 @@ Usage:
 5. Run the simultion with python3 strategy_simulation.py.
 
 
+Note: All CSVs go into the prices-folder.

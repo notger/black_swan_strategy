@@ -109,7 +109,7 @@ if __name__ == '__main__':
 
     # Load all stock information that we have:
     # prices = load_stock_prices(random=False)
-    prices = load_stock_prices(path=os.path.expanduser("dtegy.csv"))
+    prices = load_stock_prices(path=os.path.expanduser("prices/dtegy.csv"))
 
     # DEBUG:
     stock_list_to_keep = ['hp']#'dow', 'tex', 'hp']
