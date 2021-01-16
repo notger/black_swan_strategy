@@ -84,6 +84,8 @@ def get_invested_value(prices=None, sigmas=None, index=0, horizon=252, out_of_mo
 
 
 def load_stock_prices(path=""):
+    # TODO: Needs documentation, error handling and a more flexible import routine.
+    # Currently assumes that you get a download of the NYSE-prices in a certain format.
     raw = pd.read_csv(path)
 
     stocks = {}
@@ -107,7 +109,7 @@ if __name__ == '__main__':
 
     # Load all stock information that we have:
     # prices = load_stock_prices(random=False)
-    prices = load_stock_prices(path=os.path.expanduser("~/Downloads/stock_prices/NYSE_prices.csv"))
+    prices = load_stock_prices(path=os.path.expanduser("dtegy.csv"))
 
     # DEBUG:
     stock_list_to_keep = ['hp']#'dow', 'tex', 'hp']
