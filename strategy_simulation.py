@@ -9,7 +9,7 @@
 #   The value of this invested amount gets paid out once the option runs out
 #   (or we arrive in the present).
 #
-# Author: Notger Heinz <notger@dojomadness.com>
+# Author: Notger Heinz <notger.heinz@gmail.com>
 #
 
 import os
@@ -51,6 +51,7 @@ def get_invested_value(prices=None, sigmas=None, index=0, horizon=252, out_of_mo
     realised = (index + horizon) <= len(prices) - 1
 
     # DEBUG:
+    # TODO: Do we need this, should this be done someplace else and in which way?
     if 1500 < index < 2000:
         s = "k = {}:".format(index)
         s += "Current price is {} -> option price = {}, pay-out-index-price will be {}, strike-price is {}.".format(
@@ -62,6 +63,8 @@ def get_invested_value(prices=None, sigmas=None, index=0, horizon=252, out_of_mo
         print(s)
         print()
 
+    # If the option realised, i.e. if it ran out, we get the final value paid out.
+    # As we are interested in the relative return on investment, that is what we are returning here.
     if realised:
         if bet_long:
             return (max(0, prices[payout_index] - out_of_money_factor * prices[index]) - option_price) / option_price

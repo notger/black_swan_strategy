@@ -3,7 +3,7 @@
 #
 # Methods to calculate option pricing as per Black-Scholes-Formula
 #
-# Author: Notger Heinz <notger@dojomadness.com>
+# Author: Notger Heinz <notger.heinz@gmail.com>
 #
 
 import numpy as np
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     print("{} == {} ?".format(
         0.17, get_black_scholes_price(bet_long=False, s0=current_price, sigma=sigma, t=13/252, k=15.4)
     ))
-    # Call on 14.5, 13d -> 0.93
+    # Call on 14.5, 13d -> 0.93Check i
     # Put on 14.0, 13d -> 0.01
     # Put on 15.17, 33d -> 0.35
     # Call on 15.50, 33d -> 0.50
