@@ -103,6 +103,7 @@ class Simulation(object):
             try:
                 return int(df_row.Index[:4])
             except:
+                print("ASLFD")
                 return -1
 
         df['year'] = [year_from_date(row) for row in df.itertuples()]
@@ -112,15 +113,18 @@ class Simulation(object):
             len(df.query('year > 0')),
         )
 
+        df = df.query('year > 0')
+
         # Now we have to filter for non-continuous time-lines:
         if remove_discontinuous:
             df = df[
-                [col for col in df if not is_discontinuous(df[col].values, threshold=discontinuity_threshold)]
+                [col for col in df if not Simulation.is_discontinuous(df[col].values, threshold=discontinuity_threshold)]
             ]
 
-            status += "After removal of discontinuous stock price lists, {} stocks are left.\n".format(len(df.columns))
-
-        df = df.query('year > 0')
+        status += "After removal of discontinuous stock price lists{}, {} stocks are left.\n".format(
+            '' if remove_discontinuous else ' was skipped',
+            len(df.columns)
+        )
 
         if verbose:
             print(status)
