@@ -20,11 +20,14 @@ import black_scholes_model as bsm
 
 
 class SimulationOptions(object):
-    def __init__(self, horizon=int(252 / 4), out_of_money_factor=0.7, r=0.02, bet_long=False):
+    def __init__(self, horizon=int(252 / 4), out_of_money_factor=0.7, r=0.02, bet_long=False,
+                 remove_discontinuous=False, discontinuity_threshold=1):
         self.horizon = int(horizon)
         self.out_of_money_factor = out_of_money_factor
         self.r = r
         self.bet_long = bet_long
+        self.remove_discontinuous = remove_discontinuous
+        self.discontinuity_threshold = discontinuity_threshold
 
 
 def get_invested_value(
@@ -122,7 +125,7 @@ def is_discontinuous(values, threshold=1):
     return lying_in_between.sum() >= threshold
 
 
-def load_stock_prices(path="", min_num_entries=5000, verbose = True, remove_discontinuous=False, removal_threshold=1):
+def load_stock_prices(path="", min_num_entries=5000, verbose = True, remove_discontinuous=False, discontinuity_threshold=1):
     """
     Loads all CSVs in a path and extracts the closing-day prices including the dates.
     From this, it constructs a DataFrame with one column per stock and the date as index.
@@ -134,7 +137,7 @@ def load_stock_prices(path="", min_num_entries=5000, verbose = True, remove_disc
     :param path: Path in which the csv-files will be found.
     :param min_num_entries: All stocks with less entries than these will be scrapped.
     :param remove_discontinous: Should we remove stocks which have missing values in between?
-    :param removal_threshold: If those many occur, we remove.
+    :param discontinuity_threshold: If those many occur, we remove.
     :return: pd.DataFrame
     """
 
@@ -170,7 +173,7 @@ def load_stock_prices(path="", min_num_entries=5000, verbose = True, remove_disc
 
     df['year'] = [year_from_date(row) for row in df.itertuples()]
 
-    status += "After filtering out {} rows with weird date formats, {} rows remain.".format(
+    status += "After filtering out {} rows with weird date formats, {} rows remain.\n".format(
         len(df.query('year <= 0')),
         len(df.query('year > 0')),
     )
@@ -178,8 +181,10 @@ def load_stock_prices(path="", min_num_entries=5000, verbose = True, remove_disc
     # Now we have to filter for non-continuous time-lines:
     if remove_discontinuous:
         df = df[
-            [col for col in df if not is_discontinuous(d[col].values, threshold=removal_threshold)]
+            [col for col in df if not is_discontinuous(df[col].values, threshold=discontinuity_threshold)]
         ]
+
+        status += "After removal of discontinuous stock price lists, {} stocks are left.\n".format(len(df.columns))
 
     df = df.query('year > 0')
 
@@ -187,25 +192,6 @@ def load_stock_prices(path="", min_num_entries=5000, verbose = True, remove_disc
         print(status)
 
     return df
-
-    raw = pd.read_csv(path)
-
-    stocks = {}
-    for col in raw.columns:
-        if col == "PriceNumber" or col == "Date":
-            continue
-        else:
-            stocks[col] = raw[col].values.copy()
-
-    del raw
-
-    # Remove missing dates / prune the dataset:
-
-    # Check continuity of dates:
-
-    # Print some analytics:
-
-    return stocks
 
 
 def run_sim(df: pd.DataFrame, options: SimulationOptions):
