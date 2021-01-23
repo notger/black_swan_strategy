@@ -34,84 +34,12 @@ class SimulationOptions(object):
 class Simulation(object):
     def __init__(self, options: SimulationOptions, path: str):
         self.options = options
-
-    @staticmethod
-    def get_invested_value(
-            prices=None,
-            sigmas=None,
-            index=0,
-            horizon=252,
-            out_of_money_factor=0.8,
-            r=0.02,
-            bet_long=False,
-            debug_output=False
-    ):
-        """
-        :param prices: Array of historical prices for that commodity. Prices must only have one dimension!
-        :param sigmas: Pre-calculated yearly sigmas.
-        :param index: Number of day that we make the investment decision.
-        :param horizon: Investment horizon in days (252 = 1 year).
-        :param out_of_money_factor: Which factor of the current price should the strike price be?
-                                    A value of 1 indicates strike-price = current price,
-                                    a value of 2 indicates a strike-price of zero for call-options
-                                    and double the current price for put-options.
-        :param r: Risk-free return rate.
-        :param bet_long: Should we go long?
-        :return: Payout at the end of the option.
-        """
-
-        assert len(prices.shape) == 1, "Prices has to be of shape (-1,), but is of shape {}".format(prices.shape)
-        assert len(sigmas.shape) == 1, "Prices has to be of shape (-1,), but is of shape {}".format(sigmas.shape)
-
-        # Calculate the strike price at which we want to buy the option.
-        strike_price = (2 - out_of_money_factor) * prices[index] if bet_long else out_of_money_factor * prices[index]
-
-        # Get current option price at the given index:
-        option_price = bsm.get_black_scholes_price(
-            bet_long=bet_long,
-            s0=prices[index],
-            k=strike_price,
-            r=r,
-            sigma=sigmas[index],
-            t=horizon/252
+        self.df = self.load_stock_prices(
+            path,
+            min_num_entries=options.min_num_entries,
+            remove_discontinuous=options.remove_discontinuous,
+            discontinuity_threshold=options.discontinuity_threshold
         )
-
-        # Get final payout, depending on whether the option ran out and was realised, or not:
-        payout_index = min(index + horizon, len(prices) - 1)
-        realised = (index + horizon) <= len(prices) - 1
-
-        # DEBUG:
-        # TODO: Do we need this, should this be done someplace else and in which way?
-        if debug_output:
-            if 1500 < index < 2000:
-                s = "k = {}:".format(index)
-                s += "Current price is {} -> option price = {}, pay-out-index-price will be {}, strike-price is {}.".format(
-                    prices[index], option_price, prices[payout_index], out_of_money_factor * prices[index]
-                )
-                s += "\nDifference to strike price at end of period is: {}".format(
-                    max(0, out_of_money_factor * prices[index] - prices[payout_index]))
-                s += " Yearly sigma is: {}".format(sigmas[index])
-                print(s)
-                print()
-
-        # If the option realised, i.e. if it ran out, we get the final value paid out.
-        # As we are interested in the relative return on investment, that is what we are returning here.
-        if realised:
-            if bet_long:
-                return (max(0, prices[payout_index] - out_of_money_factor * prices[index]) - option_price) / option_price
-            else:
-                return (max(0, out_of_money_factor * prices[index] - prices[payout_index]) - option_price) / option_price
-        else:
-            remaining_horizon = index + horizon - len(prices) + 1
-            option_price_end = bsm.get_black_scholes_price(
-                bet_long=bet_long,
-                s0=prices[-1],
-                k=out_of_money_factor * prices[index],
-                r=r,
-                sigma=sigmas[-1],
-                t=remaining_horizon/252
-            )
-            return (option_price_end - option_price) / option_price
 
     @staticmethod
     def is_discontinuous(values, threshold=1):
@@ -199,6 +127,84 @@ class Simulation(object):
 
         return df
 
+    @staticmethod
+    def get_invested_value(
+            prices=None,
+            sigmas=None,
+            index=0,
+            horizon=252,
+            out_of_money_factor=0.8,
+            r=0.02,
+            bet_long=False,
+            debug_output=False
+    ):
+        """
+        :param prices: Array of historical prices for that commodity. Prices must only have one dimension!
+        :param sigmas: Pre-calculated yearly sigmas.
+        :param index: Number of day that we make the investment decision.
+        :param horizon: Investment horizon in days (252 = 1 year).
+        :param out_of_money_factor: Which factor of the current price should the strike price be?
+                                    A value of 1 indicates strike-price = current price,
+                                    a value of 2 indicates a strike-price of zero for call-options
+                                    and double the current price for put-options.
+        :param r: Risk-free return rate.
+        :param bet_long: Should we go long?
+        :return: Payout at the end of the option.
+        """
+
+        assert len(prices.shape) == 1, "Prices has to be of shape (-1,), but is of shape {}".format(prices.shape)
+        assert len(sigmas.shape) == 1, "Prices has to be of shape (-1,), but is of shape {}".format(sigmas.shape)
+
+        # Calculate the strike price at which we want to buy the option.
+        strike_price = (2 - out_of_money_factor) * prices[index] if bet_long else out_of_money_factor * prices[index]
+
+        # Get current option price at the given index:
+        option_price = bsm.get_black_scholes_price(
+            bet_long=bet_long,
+            s0=prices[index],
+            k=strike_price,
+            r=r,
+            sigma=sigmas[index],
+            t=horizon/252
+        )
+
+        # Get final payout, depending on whether the option ran out and was realised, or not:
+        # TODO: Check whether that index contains a values, if not get the closest previous one!
+        payout_index = min(index + horizon, len(prices) - 1)
+        realised = (index + horizon) <= len(prices) - 1
+
+        # DEBUG:
+        # TODO: Do we need this, should this be done someplace else and in which way?
+        if debug_output:
+            if 1500 < index < 2000:
+                s = "k = {}:".format(index)
+                s += "Current price is {} -> option price = {}, pay-out-index-price will be {}, strike-price is {}.".format(
+                    prices[index], option_price, prices[payout_index], out_of_money_factor * prices[index]
+                )
+                s += "\nDifference to strike price at end of period is: {}".format(
+                    max(0, out_of_money_factor * prices[index] - prices[payout_index]))
+                s += " Yearly sigma is: {}".format(sigmas[index])
+                print(s)
+                print()
+
+        # If the option realised, i.e. if it ran out, we get the final value paid out.
+        # As we are interested in the relative return on investment, that is what we are returning here.
+        if realised:
+            if bet_long:
+                return (max(0, prices[payout_index] - out_of_money_factor * prices[index]) - option_price) / option_price
+            else:
+                return (max(0, out_of_money_factor * prices[index] - prices[payout_index]) - option_price) / option_price
+        else:
+            remaining_horizon = index + horizon - len(prices) + 1
+            option_price_end = bsm.get_black_scholes_price(
+                bet_long=bet_long,
+                s0=prices[-1],
+                k=out_of_money_factor * prices[index],
+                r=r,
+                sigma=sigmas[-1],
+                t=remaining_horizon/252
+            )
+            return (option_price_end - option_price) / option_price
 
     def run(self, df: pd.DataFrame, options: SimulationOptions):
         """
@@ -212,6 +218,8 @@ class Simulation(object):
         :param options: SimulationObject-instance with the simulation parameters.
         :return: pd.DataFrame
         """
+        # For each stock, extract the values and call the ROI-calculation.
+        # Store the results in a separate dataframe, where entries are nan where we could not calculate the ROI.
         return None
 
 
