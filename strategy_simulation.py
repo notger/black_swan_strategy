@@ -21,11 +21,12 @@ import black_scholes_model as bsm
 
 class SimulationOptions(object):
     def __init__(self, horizon=int(252 / 4), out_of_money_factor=0.7, r=0.02, bet_long=False,
-                 remove_discontinuous=False, discontinuity_threshold=1):
+                 min_num_entries=5000, remove_discontinuous=False, discontinuity_threshold=1):
         self.horizon = int(horizon)
         self.out_of_money_factor = out_of_money_factor
         self.r = r
         self.bet_long = bet_long
+        self.min_num_entries = int(min_num_entries)
         self.remove_discontinuous = remove_discontinuous
         self.discontinuity_threshold = discontinuity_threshold
 
