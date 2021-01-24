@@ -36,6 +36,7 @@ def sigma_yearly_from_daily_prices(prices):
     # From this, get the standard deviation up to that point.
     # Unfortunately, the price-matrix does not have to be filled for any day, so we have to deal with nan-values.
     # This means we can't just vectorise the whole matrix, but have to go stock by stock:
+    # TODO: Speed this up, this is very slow, due to the element-wise cumulative calculation!
     sigma = np.zeros(prices.shape)
     for stock in range(N_stocks):
         for day in range(1, N_days):

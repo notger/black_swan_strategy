@@ -34,7 +34,7 @@ class SimulationOptions(object):
 class Simulation(object):
     def __init__(self, options: SimulationOptions, path: str):
         self.options = options
-        self.df = self.load_stock_prices(
+        self.prices = self.load_stock_prices(
             path,
             min_num_entries=options.min_num_entries,
             remove_discontinuous=options.remove_discontinuous,
@@ -132,6 +132,16 @@ class Simulation(object):
         return df
 
     @staticmethod
+    def get_last_index_within_range(array, max_index):
+        """
+        Helper function to find the last valid entry in an array.
+
+        We do this by first checking for all non-nan-entries within the range up to and including max_index,
+        then getting the indices of the occurences of all the non-nan-entries and choosing the max-value.
+        """
+        return np.max(np.where(~np.isnan(array[:max_index + 1])), initial=0)
+
+    @staticmethod
     def get_invested_value(
             prices=None,
             sigmas=None,
@@ -172,9 +182,9 @@ class Simulation(object):
             t=horizon/252
         )
 
-        # Get final payout, depending on whether the option ran out and was realised, or not:
-        # TODO: Check whether that index contains a values, if not get the closest previous one!
-        payout_index = min(index + horizon, len(prices) - 1)
+        # Get final payout, depending on whether the option ran out and was realised, or not.
+        # Get the payout index from getting the last index that has a value in our pricing array.
+        payout_index = Simulation.get_last_index_within_range(prices, index + horizon)
         realised = (index + horizon) <= len(prices) - 1
 
         # DEBUG:
@@ -195,9 +205,9 @@ class Simulation(object):
         # As we are interested in the relative return on investment, that is what we are returning here.
         if realised:
             if bet_long:
-                return (max(0, prices[payout_index] - out_of_money_factor * prices[index]) - option_price) / option_price
+                return (max(0, prices[payout_index] - strike_price) - option_price) / option_price
             else:
-                return (max(0, out_of_money_factor * prices[index] - prices[payout_index]) - option_price) / option_price
+                return (max(0, strike_price - prices[payout_index]) - option_price) / option_price
         else:
             remaining_horizon = index + horizon - len(prices) + 1
             option_price_end = bsm.get_black_scholes_price(
@@ -210,7 +220,8 @@ class Simulation(object):
             )
             return (option_price_end - option_price) / option_price
 
-    def run(self, df: pd.DataFrame, options: SimulationOptions):
+    @staticmethod
+    def _run(prices, options, verbose=True, get_invested_value=None):
         """
         Runs the simulation by taking the stock closing prices, calculating the volatilities and going over all
         possible investment starting points to calculate the end-of-investment return.
@@ -218,14 +229,37 @@ class Simulation(object):
         The return value is a DataFrame with dates as indices and the return on investment for each
         starting date and for each stock, where stocks are ordered column-wise.
 
-        :param df: DataFrame to work on. DataFrame should have dates as indices and stock closing prices as columns.
-        :param options: SimulationObject-instance with the simulation parameters.
         :return: pd.DataFrame
         """
-        # For each stock, calculate the running yearly volatility.
-        # Then extract the values and call the ROI-calculation.
+        # For each stock, calculate the running yearly volatility:
+        sigmas = pd.DataFrame(
+            vol.sigma_yearly_from_daily_prices(prices.values),
+            index=prices.index,
+            columns=prices.columns
+        )
+        if verbose:
+            print("Finished calculating the yearly sigmas.")
+
+        # Then extract the values and call the ROI-calculation for investing one given day:
+        pay_outs = np.empty_like(prices.values)
+        for stock_idx, stock in enumerate(prices.columns):
+            for k in range(100, len(sigmas)):
+                pay_outs[k, stock_idx] = get_invested_value(
+                    prices=prices[stock].values.squeeze(),
+                    sigmas=sigmas[stock].values.squeeze(),
+                    index=k,
+                    horizon=options.horizon,
+                    out_of_money_factor=options.out_of_money_factor,
+                    r=options.r,
+                    bet_long=options.bet_long,
+                )
+        pay_outs = pd.DataFrame(pay_outs, index=sigmas.index, columns=sigmas.columns)
+
         # Store the results in a separate dataframe, where entries are nan where we could not calculate the ROI.
-        return None
+        return pay_outs
+
+    def run(self, verbose=True):
+        return self._run(self.prices, self.options, verbose=verbose, get_invested_value=Simulation.get_invested_value)
 
 
 if __name__ == '__main__':

@@ -21,5 +21,21 @@ class TestStrategySimulation(unittest.TestCase):
         self.assertFalse(Simulation.is_discontinuous(np.asarray([1, 1, np.nan, 1, 1]), threshold=3))
         self.assertTrue(Simulation.is_discontinuous(np.asarray([1, 1, np.nan, np.nan, np.nan, 1, 1]), threshold=3))
 
+    def test_get_last_index_within_range(self):
+        # Create a test array which contains two nan-values at index six and seven (zero-based, ofc ;) ).
+        array = np.asarray([1, 1, 1, 1, 1, 1, np.nan, np.nan, 1, 1])
+
+        self.assertEqual(4, Simulation.get_last_index_within_range(array, 4))
+        self.assertEqual(5, Simulation.get_last_index_within_range(array, 6))
+        self.assertEqual(5, Simulation.get_last_index_within_range(array, 7))
+        self.assertEqual(8, Simulation.get_last_index_within_range(array, 8))
+        self.assertEqual(9, Simulation.get_last_index_within_range(array, 100))
+        self.assertEqual(np.int64, type(Simulation.get_last_index_within_range(array, 100)))
+
+        nan_array = np.empty_like(array)
+        nan_array[:] = np.nan
+        self.assertEqual(0, Simulation.get_last_index_within_range(nan_array, 100))
+
+
 if __name__ == '__main__':
     unittest.main()
