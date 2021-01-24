@@ -104,7 +104,6 @@ class Simulation(object):
             try:
                 return int(df_row.Index[:4])
             except:
-                print("ASLFD")
                 return -1
 
         df['year'] = [year_from_date(row) for row in df.itertuples()]
@@ -115,6 +114,7 @@ class Simulation(object):
         )
 
         df = df.query('year > 0')
+        df.drop('year', axis=1, inplace=True)
 
         # Now we have to filter for non-continuous time-lines:
         if remove_discontinuous:
