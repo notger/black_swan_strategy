@@ -13,24 +13,43 @@ def sigma_yearly_from_daily_prices(prices):
     """
     Calculate the running yearly volatility from an asset-price-matrix.
 
-    :param prices: np.ndarray of prices. Prices should contain one row per stock, and one column per day.
-                   All cells have to be filled.
+    Note that since the asset-price-matrix can contain nan-values, the standard deviations for days where the asset
+    was not traded can not be calculated. The sigma-matrix will thus also contain nan-values in those spots.
+    However, for an entry after a missing entry, we will pretend that the line of values was continuous and
+    thus get a volatility estimation here. It basically is like if the asset never had a nan-value in the first place.
+
+    :param prices: np.ndarray of prices. Prices should contain one column per stock, and one row per day.
     :return: np.ndarray, same shape as prices, but filled with the sigma-values.
     """
 
     assert len(prices.shape) > 1, "prices is not in Matrix shape!"
 
-    N_days = prices.shape[1]
+    N_days = prices.shape[0]
+    N_stocks = prices.shape[1]
 
     # Calculate the logarithmic daily return:
     R = np.ones(prices.shape)
-    R[:, 1:] = prices[:, 1:] / prices[:, 0:-1]
+    R[1:, :] = prices[1:, :] / prices[0:-1, :]
     Rln = np.log(R)
 
-    # From this, get the standard deviation up to that point:
+    # TODO: Is this correct? Do we really take the standard deviation from all of history to calculate the yearly standard deviation or rather the standard deviation over the last year?
+    # From this, get the standard deviation up to that point.
+    # Unfortunately, the price-matrix does not have to be filled for any day, so we have to deal with nan-values.
+    # This means we can't just vectorise the whole matrix, but have to go stock by stock:
     sigma = np.zeros(prices.shape)
-    for k in range(1, N_days):
-        sigma[:, k] = np.std(Rln[:, 0:k + 1], axis=1)
+    for stock in range(N_stocks):
+        for day in range(1, N_days):
+            # The following is going to be a bit ugly to parse:
+            # - Use where to find the non-nan-values in Rln for that given stock.
+            # - With these indices, select the non-nan-values in Rln and get the standard deviation on it.
+            if np.isnan(prices[day, stock]):
+                sigma[day, stock] = np.nan
+            else:
+                sigma[day, stock] = np.std(
+                    Rln[
+                        np.where(~np.isnan(Rln[0:day + 1, stock])), stock
+                    ]
+                )
 
     # And now return the yearly standard deviation from that:
     return sigma * np.sqrt(252)

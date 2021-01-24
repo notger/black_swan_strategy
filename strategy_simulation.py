@@ -222,7 +222,8 @@ class Simulation(object):
         :param options: SimulationObject-instance with the simulation parameters.
         :return: pd.DataFrame
         """
-        # For each stock, extract the values and call the ROI-calculation.
+        # For each stock, calculate the running yearly volatility.
+        # Then extract the values and call the ROI-calculation.
         # Store the results in a separate dataframe, where entries are nan where we could not calculate the ROI.
         return None
 
