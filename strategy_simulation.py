@@ -40,6 +40,7 @@ class Simulation(object):
             remove_discontinuous=options.remove_discontinuous,
             discontinuity_threshold=options.discontinuity_threshold
         )
+        self.payouts = None
 
     @staticmethod
     def is_discontinuous(values, threshold=1):
@@ -241,10 +242,10 @@ class Simulation(object):
             print("Finished calculating the yearly sigmas.")
 
         # Then extract the values and call the ROI-calculation for investing one given day:
-        pay_outs = np.empty_like(prices.values)
+        payouts = np.empty_like(prices.values)
         for stock_idx, stock in enumerate(prices.columns):
             for k in range(100, len(sigmas)):
-                pay_outs[k, stock_idx] = get_invested_value(
+                payouts[k, stock_idx] = get_invested_value(
                     prices=prices[stock].values.squeeze(),
                     sigmas=sigmas[stock].values.squeeze(),
                     index=k,
@@ -253,76 +254,16 @@ class Simulation(object):
                     r=options.r,
                     bet_long=options.bet_long,
                 )
-        pay_outs = pd.DataFrame(pay_outs, index=sigmas.index, columns=sigmas.columns)
+        payouts = pd.DataFrame(payouts, index=sigmas.index, columns=sigmas.columns)
 
         # Store the results in a separate dataframe, where entries are nan where we could not calculate the ROI.
         return pay_outs
 
     def run(self, verbose=True):
-        return self._run(self.prices, self.options, verbose=verbose, get_invested_value=Simulation.get_invested_value)
-
-
-if __name__ == '__main__':
-    pass
-    # # TODO: Clean up, compartimentalise, outsource and give the user a choice via input parameter.
-    #
-    # horizon = int(252/4)
-    # out_of_money_factor = 0.7
-    # r = 0.02
-    # bet_long = False
-    #
-    # # Load all stock information that we have:
-    # prices = load_stock_prices(path=os.path.expanduser("prices/dtegy.csv"))
-    #
-    # # DEBUG:
-    # stock_list_to_keep = ['hp']#'dow', 'tex', 'hp']
-    # prices = {x: prices[x] for x in stock_list_to_keep if x in prices}
-    #
-    # # Get the sigmas:
-    # sigmas = {}
-    # for stock in prices.keys():
-    #     sigmas[stock] = vol.sigma_yearly_from_daily_prices(prices[stock].reshape((1, -1))).reshape((-1,))
-    #
-    # pay_out = {}
-    #
-    # for s, stock in enumerate(prices.keys()):
-    #     num_stock_prices = len(prices[stock])
-    #     pay_out[stock] = np.zeros(num_stock_prices)
-    #     for k in range(100, num_stock_prices):
-    #         pay_out[stock][k] = get_invested_value(
-    #             prices=prices[stock], sigmas=sigmas[stock], index=k,
-    #             horizon=int(252/4), out_of_money_factor=out_of_money_factor, bet_long=bet_long
-    #         )
-    #
-    # acc_pay_out = {}
-    # for stock in pay_out.keys():
-    #     acc_pay_out[stock] = np.cumsum(pay_out[stock])
-    #
-    # final_pay_out = [p[-2] for s, p in acc_pay_out.items()]
-    # mean_final_pay_out = np.mean(final_pay_out)
-    #
-    # print("Final pay_outs: {}".format(final_pay_out))
-    #
-    # import matplotlib.pyplot as plt
-    # plt.subplot(311)
-    # for stock in pay_out.keys():
-    #     plt.plot(np.cumsum(pay_out[stock]), label=stock)
-    # plt.title('Mean final payout: {:.2f} % for horizon of {} days, r = {:.1f} %, ofmf = {:.2f} and {} strategy'.format(
-    #     100 * mean_final_pay_out, horizon, 100 * r, out_of_money_factor, "long" if bet_long else "short"))
-    # plt.ylabel('accumulated fonds value')
-    # plt.legend(loc=2)
-    # plt.grid(True)
-    # plt.subplot(312)
-    # for stock in prices.keys():
-    #     plt.plot(prices[stock], label=stock)
-    # plt.ylabel('stock price')
-    # plt.legend(loc=2)
-    # plt.grid(True)
-    # plt.subplot(313)
-    # x = np.linspace(0, len(pay_out) - 1, len(pay_out))
-    # plt.plot(x, final_pay_out)
-    # plt.xticks(x, pay_out.keys())
-    # plt.ylabel('final payout per stock')
-    # plt.xlabel('stock')
-    # plt.grid(True)
-    # plt.show()
+        self.payouts = self._run(
+            self.prices,
+            self.options,
+            verbose=verbose,
+            get_invested_value=Simulation.get_invested_value
+        )
+        return self.payouts
