@@ -65,9 +65,9 @@ def generate_stock_prices(num_of_stocks=10, num_of_days=1000):
     :return: np.ndarray of shape (num_of_stocks, num_of_days).
     """
     changes = np.random.randn(num_of_stocks * num_of_days).reshape((num_of_stocks, num_of_days))
-    prices = changes.cumsum(axis=1) + np.random.random_integers(50, 150, num_of_stocks).reshape((num_of_stocks, 1))
+    prices = changes.cumsum(axis=1) + np.random.randint(50, 150, num_of_stocks).reshape((num_of_stocks, 1))
 
-    return np.clip(prices, 1e-6, np.inf)
+    return np.clip(prices, 1e-6, np.inf).T
 
 
 if __name__ == '__main__':
@@ -84,11 +84,11 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     plt.figure()
     plt.subplot(211)
-    plt.plot(prices.T)
+    plt.plot(prices)
     plt.ylabel("Artifical stock price")
     plt.grid(True)
     plt.subplot(212)
-    plt.plot(s.T)
+    plt.plot(s)
     plt.ylabel("Running yearly volatility")
     plt.xlabel("Time step / day")
     plt.grid(True)
