@@ -254,7 +254,7 @@ class Simulation(object):
                     r=options.r,
                     bet_long=options.bet_long,
                 )
-        payouts = pd.DataFrame(payouts, index=sigmas.index, columns=sigmas.columns)
+        pay_outs = pd.DataFrame(payouts, index=sigmas.index, columns=sigmas.columns)
 
         # Store the results in a separate dataframe, where entries are nan where we could not calculate the ROI.
         return pay_outs
