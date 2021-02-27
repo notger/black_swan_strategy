@@ -32,7 +32,7 @@ class SimulationOptions(object):
 
 
 class Simulation(object):
-    def __init__(self, options: SimulationOptions, path: str):
+    def __init__(self, options: SimulationOptions = SimulationOptions(), path: str = ""):
         self.options = options
         self.prices = self.load_stock_prices(
             path,
@@ -187,20 +187,6 @@ class Simulation(object):
         # Get the payout index from getting the last index that has a value in our pricing array.
         payout_index = Simulation.get_last_index_within_range(prices, index + horizon)
         realised = (index + horizon) <= len(prices) - 1
-
-        # DEBUG:
-        # TODO: Do we need this, should this be done someplace else and in which way?
-        if debug_output:
-            if 1500 < index < 2000:
-                s = "k = {}:".format(index)
-                s += "Current price is {} -> option price = {}, pay-out-index-price will be {}, strike-price is {}.".format(
-                    prices[index], option_price, prices[payout_index], out_of_money_factor * prices[index]
-                )
-                s += "\nDifference to strike price at end of period is: {}".format(
-                    max(0, out_of_money_factor * prices[index] - prices[payout_index]))
-                s += " Yearly sigma is: {}".format(sigmas[index])
-                print(s)
-                print()
 
         # If the option realised, i.e. if it ran out, we get the final value paid out.
         # As we are interested in the relative return on investment, that is what we are returning here.
