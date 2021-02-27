@@ -15,6 +15,7 @@
 import os
 import numpy as np
 import pandas as pd
+from tqdm.notebook import tqdm
 import volatility as vol
 import black_scholes_model as bsm
 
@@ -32,7 +33,7 @@ class SimulationOptions(object):
 
 
 class Simulation(object):
-    def __init__(self, options: SimulationOptions = SimulationOptions(), path: str = ""):
+    def __init__(self, options: SimulationOptions = SimulationOptions(), path: str = "prices"):
         self.options = options
         self.prices = self.load_stock_prices(
             path,
@@ -229,7 +230,7 @@ class Simulation(object):
 
         # Then extract the values and call the ROI-calculation for investing one given day:
         payouts = np.empty_like(prices.values)
-        for stock_idx, stock in enumerate(prices.columns):
+        for stock_idx, stock in tqdm(enumerate(prices.columns), total=len(prices.columns)):
             for k in range(100, len(sigmas)):
                 payouts[k, stock_idx] = get_invested_value(
                     prices=prices[stock].values.squeeze(),
@@ -245,9 +246,16 @@ class Simulation(object):
         # Store the results in a separate dataframe, where entries are nan where we could not calculate the ROI.
         return pay_outs
 
-    def run(self, verbose=True):
+    def run(self, verbose=True, random_subset_size: int = 0):
+        # If the random_subset_size has been chosen to be larger than 0, generate a subset:
+        if random_subset_size > 0:
+            import random
+            selected_stocks = random.choices(self.prices.columns, k=random_subset_size)
+        else:
+            selected_stocks = self.price.columns
+
         self.payouts = self._run(
-            self.prices,
+            self.prices[selected_stocks],
             self.options,
             verbose=verbose,
             get_invested_value=Simulation.get_invested_value
