@@ -42,6 +42,7 @@ class Simulation(object):
             discontinuity_threshold=options.discontinuity_threshold
         )
         self.payouts = None
+        self.sigmas = None
 
     @staticmethod
     def is_discontinuous(values, threshold=1):
@@ -244,7 +245,7 @@ class Simulation(object):
         pay_outs = pd.DataFrame(payouts, index=sigmas.index, columns=sigmas.columns)
 
         # Store the results in a separate dataframe, where entries are nan where we could not calculate the ROI.
-        return pay_outs
+        return pay_outs, sigmas
 
     def run(self, verbose=True, random_subset_size: int = 0):
         # If the random_subset_size has been chosen to be larger than 0, generate a subset:
@@ -254,7 +255,7 @@ class Simulation(object):
         else:
             selected_stocks = self.price.columns
 
-        self.payouts = self._run(
+        self.payouts, self.sigmas = self._run(
             self.prices[selected_stocks],
             self.options,
             verbose=verbose,
