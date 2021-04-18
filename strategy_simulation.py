@@ -13,11 +13,15 @@
 #
 
 import os
+import typing
+
 import numpy as np
 import pandas as pd
 from tqdm.notebook import tqdm
 import volatility as vol
 import black_scholes_model as bsm
+
+MIN_OPTION_PRICE = 1e-3
 
 
 class SimulationOptions(object):
@@ -30,6 +34,9 @@ class SimulationOptions(object):
         self.min_num_entries = int(min_num_entries)
         self.remove_discontinuous = remove_discontinuous
         self.discontinuity_threshold = discontinuity_threshold
+
+    def __str__(self):
+        return str(self.__dict__)
 
 
 class Simulation(object):
@@ -153,7 +160,6 @@ class Simulation(object):
             out_of_money_factor=0.8,
             r=0.02,
             bet_long=False,
-            debug_output=False
     ):
         """
         :param prices: Array of historical prices for that commodity. Prices must only have one dimension!
@@ -169,8 +175,11 @@ class Simulation(object):
         :return: Payout at the end of the option.
         """
 
-        assert len(prices.shape) == 1, "Prices has to be of shape (-1,), but is of shape {}".format(prices.shape)
-        assert len(sigmas.shape) == 1, "Prices has to be of shape (-1,), but is of shape {}".format(sigmas.shape)
+        try:
+            assert len(prices.shape) == 1, "Prices has to be of shape (-1,), but is of shape {}".format(prices.shape)
+            assert len(sigmas.shape) == 1, "Prices has to be of shape (-1,), but is of shape {}".format(sigmas.shape)
+        except AssertionError as e:
+            raise e
 
         # Calculate the strike price at which we want to buy the option.
         strike_price = (2 - out_of_money_factor) * prices[index] if bet_long else out_of_money_factor * prices[index]
@@ -184,6 +193,11 @@ class Simulation(object):
             sigma=sigmas[index],
             t=horizon/252
         )
+
+        # As we are going to divide by the option price later to get the ROI, it better be noticeably
+        # above zero. Otherwise throw a value-error:
+        if option_price < MIN_OPTION_PRICE:
+            raise ValueError(f"Option price {option_price} is below threshold {MIN_OPTION_PRICE}.")
 
         # Get final payout, depending on whether the option ran out and was realised, or not.
         # Get the payout index from getting the last index that has a value in our pricing array.
@@ -233,27 +247,50 @@ class Simulation(object):
         payouts = np.empty_like(prices.values)
         for stock_idx, stock in tqdm(enumerate(prices.columns), total=len(prices.columns)):
             for k in range(100, len(sigmas)):
-                payouts[k, stock_idx] = get_invested_value(
-                    prices=prices[stock].values.squeeze(),
-                    sigmas=sigmas[stock].values.squeeze(),
-                    index=k,
-                    horizon=options.horizon,
-                    out_of_money_factor=options.out_of_money_factor,
-                    r=options.r,
-                    bet_long=options.bet_long,
-                )
+                try:
+                    payouts[k, stock_idx] = get_invested_value(
+                        prices=prices[stock].values.squeeze(),
+                        sigmas=sigmas[stock].values.squeeze(),
+                        index=k,
+                        horizon=options.horizon,
+                        out_of_money_factor=options.out_of_money_factor,
+                        r=options.r,
+                        bet_long=options.bet_long,
+                    )
+                except AssertionError as a:
+                    # Raise and enhanced assertion error with info that was not availabe within the
+                    # get_invested_value-function:
+                    s = f'Encountered AssertionError for improper shape of vectors ' \
+                        f'prices/sigmas for {stock} (idx: {stock_idx}) in step {k}: {a}\n'
+                    s += f'Shapes passed were: {prices[stock].values.squeeze().shape} for prices ' \
+                         f'and {sigmas[stock].values.squeeze().shape} for sigmas.\n'
+                    raise AssertionError(s)
+                except ValueError as v:
+                    # Raise an enhanced value error with info that was not available within the get_invested_value-function:
+                    s = f'Encountered ValueError "{v}" for {stock} (idx: {stock_idx}) in step {k}.\n'
+                    s += f'Stock price at index {k} was {prices[stock].values.squeeze()[k]}.\n'
+                    s += f'Sigma at index {k} was {sigmas[stock].values.squeeze()[k]}.\n'
+                    s += f'Passed parameters were:\n{options}\n'
+                    raise ValueError(s)
+                except Exception as e:
+                    raise Exception("Unknown exception raised.")
         pay_outs = pd.DataFrame(payouts, index=sigmas.index, columns=sigmas.columns)
 
         # Store the results in a separate dataframe, where entries are nan where we could not calculate the ROI.
         return pay_outs, sigmas
 
-    def run(self, verbose=True, random_subset_size: int = 0):
-        # If the random_subset_size has been chosen to be larger than 0, generate a subset:
-        if random_subset_size > 0:
+    def run(self, verbose=True, defined_subset: typing.List[str] = [], random_subset_size: int = 0):
+        # If the set has been defined, take the defined set (if it exists in the column set),
+        # otherwise check if random_subset_size has been chosen to be larger than 0, generate a subset:
+        if len(defined_subset) > 0:
+            selected_stocks = defined_subset
+            assert set(defined_subset).issubset(set(self.prices.columns)), \
+                f'Defined set of columns {defined_subset} not in set of price-columns {self.prices.columns}.'
+        elif random_subset_size > 0:
             import random
             selected_stocks = random.choices(self.prices.columns, k=random_subset_size)
         else:
-            selected_stocks = self.price.columns
+            selected_stocks = self.sigmasself.prices.columns
 
         self.payouts, self.sigmas = self._run(
             self.prices[selected_stocks],
