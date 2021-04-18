@@ -1,6 +1,7 @@
+bs4
 matplotlib
 numpy
 pandas
 scipy
+tqdm
 yfinance
-bs4

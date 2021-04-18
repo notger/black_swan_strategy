@@ -15,6 +15,7 @@
 import os
 import numpy as np
 import pandas as pd
+from tqdm.notebook import tqdm
 import volatility as vol
 import black_scholes_model as bsm
 
@@ -32,7 +33,7 @@ class SimulationOptions(object):
 
 
 class Simulation(object):
-    def __init__(self, options: SimulationOptions, path: str):
+    def __init__(self, options: SimulationOptions = SimulationOptions(), path: str = "prices"):
         self.options = options
         self.prices = self.load_stock_prices(
             path,
@@ -41,6 +42,7 @@ class Simulation(object):
             discontinuity_threshold=options.discontinuity_threshold
         )
         self.payouts = None
+        self.sigmas = None
 
     @staticmethod
     def is_discontinuous(values, threshold=1):
@@ -188,20 +190,6 @@ class Simulation(object):
         payout_index = Simulation.get_last_index_within_range(prices, index + horizon)
         realised = (index + horizon) <= len(prices) - 1
 
-        # DEBUG:
-        # TODO: Do we need this, should this be done someplace else and in which way?
-        if debug_output:
-            if 1500 < index < 2000:
-                s = "k = {}:".format(index)
-                s += "Current price is {} -> option price = {}, pay-out-index-price will be {}, strike-price is {}.".format(
-                    prices[index], option_price, prices[payout_index], out_of_money_factor * prices[index]
-                )
-                s += "\nDifference to strike price at end of period is: {}".format(
-                    max(0, out_of_money_factor * prices[index] - prices[payout_index]))
-                s += " Yearly sigma is: {}".format(sigmas[index])
-                print(s)
-                print()
-
         # If the option realised, i.e. if it ran out, we get the final value paid out.
         # As we are interested in the relative return on investment, that is what we are returning here.
         if realised:
@@ -243,7 +231,7 @@ class Simulation(object):
 
         # Then extract the values and call the ROI-calculation for investing one given day:
         payouts = np.empty_like(prices.values)
-        for stock_idx, stock in enumerate(prices.columns):
+        for stock_idx, stock in tqdm(enumerate(prices.columns), total=len(prices.columns)):
             for k in range(100, len(sigmas)):
                 payouts[k, stock_idx] = get_invested_value(
                     prices=prices[stock].values.squeeze(),
@@ -257,11 +245,18 @@ class Simulation(object):
         pay_outs = pd.DataFrame(payouts, index=sigmas.index, columns=sigmas.columns)
 
         # Store the results in a separate dataframe, where entries are nan where we could not calculate the ROI.
-        return pay_outs
+        return pay_outs, sigmas
 
-    def run(self, verbose=True):
-        self.payouts = self._run(
-            self.prices,
+    def run(self, verbose=True, random_subset_size: int = 0):
+        # If the random_subset_size has been chosen to be larger than 0, generate a subset:
+        if random_subset_size > 0:
+            import random
+            selected_stocks = random.choices(self.prices.columns, k=random_subset_size)
+        else:
+            selected_stocks = self.price.columns
+
+        self.payouts, self.sigmas = self._run(
+            self.prices[selected_stocks],
             self.options,
             verbose=verbose,
             get_invested_value=Simulation.get_invested_value
