@@ -142,6 +142,19 @@ class Simulation(object):
         return df
 
     @staticmethod
+    def _calculate_sigmas_wrapper(prices):
+        """
+        Wrapper for easier debugging.
+        :param prices: Pandas dataframe of the prices that you want sigmas for. Make sure it is a dataframe, not a series!
+        :return: pd.DataFrame
+        """
+        return pd.DataFrame(
+            vol.sigma_yearly_from_daily_prices(prices.values),
+            index=prices.index,
+            columns=prices.columns
+        )
+
+    @staticmethod
     def get_last_index_within_range(array, max_index):
         """
         Helper function to find the last valid entry in an array.
@@ -235,11 +248,8 @@ class Simulation(object):
         :return: pd.DataFrame
         """
         # For each stock, calculate the running yearly volatility:
-        sigmas = pd.DataFrame(
-            vol.sigma_yearly_from_daily_prices(prices.values),
-            index=prices.index,
-            columns=prices.columns
-        )
+        sigmas = Simulation._calculate_sigmas_wrapper(prices)
+
         if verbose:
             print("Finished calculating the yearly sigmas.")
 
