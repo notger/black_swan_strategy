@@ -25,9 +25,36 @@ MIN_OPTION_PRICE = 1e-3
 
 
 class SimulationOptions(object):
-    def __init__(self, horizon=int(252 / 4), out_of_money_factor=0.7, r=0.02, bet_long=False,
-                 min_num_entries=5000, remove_discontinuous=False, discontinuity_threshold=1):
+    def __init__(
+            self,
+            horizon: int = int(252 / 4),
+            minimum_maturity: int = int(50),
+            out_of_money_factor: float = 0.7,
+            r: float = 0.02,
+            bet_long: bool = False,
+            min_num_entries: int = 5000,
+            remove_discontinuous: bool = False,
+            discontinuity_threshold: int = 1,
+    ):
+        """
+        Please also see the function load_stock_prices for an explanation.
+
+        :param horizon: Investment horizon, i.e. how long will the option we buy be out (=option horizon).
+        :param minimum_maturity: Minimum days that a stock has to be alive, before we start trading on it.
+        :param out_of_money_factor: How far out of money do we choose our options?
+                                    The lower the number below 1.0, the stronger the stock has to move before we
+                                    get in the money.
+                                    E.g.: val = 0.5 means that for a call option of a stock which currently trades
+                                    at 100, we choose a strike price of 200. For a put-option, it would be 5.
+        :param r: Risk-free interest rate, used in the Black-Scholes-formula.
+        :param bet_long: Are we going long or short, i.e. calls or puts? Has to be boolean.
+        :param min_num_entries: Minimum number of entries for a given stock price history.
+                                Only relevant during loading of the stock prices!
+        :param remove_discontinuous: Should we remove stocks which have missing values in between?
+        :param discontinuity_threshold: If those many occur, we remove.
+        """
         self.horizon = int(horizon)
+        self.minimum_maturity = minimum_maturity
         self.out_of_money_factor = out_of_money_factor
         self.r = r
         self.bet_long = bet_long
@@ -80,7 +107,7 @@ class Simulation(object):
 
         :param path: Path in which the csv-files will be found.
         :param min_num_entries: All stocks with less entries than these will be scrapped.
-        :param remove_discontinous: Should we remove stocks which have missing values in between?
+        :param remove_discontinuous: Should we remove stocks which have missing values in between?
         :param discontinuity_threshold: If those many occur, we remove.
         :return: pd.DataFrame
         """
@@ -170,6 +197,7 @@ class Simulation(object):
             sigmas=None,
             index=0,
             horizon=252,
+            minimum_maturity=100,
             out_of_money_factor=0.8,
             r=0.02,
             bet_long=False,
@@ -256,7 +284,14 @@ class Simulation(object):
         # Then extract the values and call the ROI-calculation for investing one given day:
         payouts = np.empty_like(prices.values)
         for stock_idx, stock in tqdm(enumerate(prices.columns), total=len(prices.columns)):
-            for k in range(100, len(sigmas)):
+            # We do not want to start trading right away, when a stock becomes available. So we need to find out
+            # the "date of birth" for a stock (which is the minimum index where an isna-comparison changes from
+            # True to False) and then add our minimum maturity.
+            # Alternative for date_of_stock_trading_start: np.argmin(prices[stock].isna().values), which is a bit less
+            # readable.
+            date_of_stock_trading_start = prices[stock].isna().idxmin()
+            trading_start_idx = prices.index.get_loc(date_of_stock_trading_start) + options.minimum_maturity
+            for k in range(trading_start_idx, len(sigmas)):
                 try:
                     payouts[k, stock_idx] = get_invested_value(
                         prices=prices[stock].values.squeeze(),
