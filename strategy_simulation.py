@@ -197,7 +197,6 @@ class Simulation(object):
             sigmas=None,
             index=0,
             horizon=252,
-            minimum_maturity=100,
             out_of_money_factor=0.8,
             r=0.02,
             bet_long=False,
@@ -238,7 +237,8 @@ class Simulation(object):
         # As we are going to divide by the option price later to get the ROI, it better be noticeably
         # above zero. Otherwise throw a value-error:
         if option_price < MIN_OPTION_PRICE:
-            raise ValueError(f"Option price {option_price} is below threshold {MIN_OPTION_PRICE}.")
+            #raise ValueError(f"Option price {option_price} is below threshold {MIN_OPTION_PRICE}.")
+            return np.nan
 
         # Get final payout, depending on whether the option ran out and was realised, or not.
         # Get the payout index from getting the last index that has a value in our pricing array.
