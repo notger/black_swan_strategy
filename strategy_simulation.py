@@ -217,7 +217,7 @@ class Simulation(object):
 
         try:
             assert len(prices.shape) == 1, "Prices has to be of shape (-1,), but is of shape {}".format(prices.shape)
-            assert len(sigmas.shape) == 1, "Prices has to be of shape (-1,), but is of shape {}".format(sigmas.shape)
+            assert len(sigmas.shape) == 1, "Sigmas has to be of shape (-1,), but is of shape {}".format(sigmas.shape)
         except AssertionError as e:
             raise e
 
@@ -289,8 +289,10 @@ class Simulation(object):
             # True to False) and then add our minimum maturity.
             # Alternative for date_of_stock_trading_start: np.argmin(prices[stock].isna().values), which is a bit less
             # readable.
-            date_of_stock_trading_start = prices[stock].isna().idxmin()
-            trading_start_idx = prices.index.get_loc(date_of_stock_trading_start) + options.minimum_maturity
+            #date_of_stock_trading_start = prices[stock].isna().idxmin()
+            date_of_stock_trading_start = np.argmin(prices[stock].isna().values)
+            #trading_start_idx = prices.index.get_loc(date_of_stock_trading_start) + options.minimum_maturity
+            trading_start_idx = date_of_stock_trading_start + options.minimum_maturity
             for k in range(trading_start_idx, len(sigmas)):
                 try:
                     payouts[k, stock_idx] = get_invested_value(
@@ -333,14 +335,16 @@ class Simulation(object):
                 f'Defined set of columns {defined_subset} not in set of price-columns {self.prices.columns}.'
         elif random_subset_size > 0:
             import random
-            selected_stocks = random.choices(self.prices.columns, k=random_subset_size)
+            print(self.prices.columns)
+            selected_stocks = random.sample(list(self.prices.columns), k=random_subset_size)
+            print(f'Random stocks are:\n{selected_stocks}')
         else:
             selected_stocks = self.sigmasself.prices.columns
 
         self.payouts, self.sigmas = self._run(
             self.prices[selected_stocks],
             self.options,
-            verbose=verbose,
+            verbose=True,
             get_invested_value=Simulation.get_invested_value
         )
         return self.payouts
