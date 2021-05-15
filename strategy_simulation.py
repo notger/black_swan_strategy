@@ -335,16 +335,14 @@ class Simulation(object):
                 f'Defined set of columns {defined_subset} not in set of price-columns {self.prices.columns}.'
         elif random_subset_size > 0:
             import random
-            print(self.prices.columns)
             selected_stocks = random.sample(list(self.prices.columns), k=random_subset_size)
-            print(f'Random stocks are:\n{selected_stocks}')
         else:
             selected_stocks = self.sigmasself.prices.columns
 
         self.payouts, self.sigmas = self._run(
             self.prices[selected_stocks],
             self.options,
-            verbose=True,
+            verbose=verbose,
             get_invested_value=Simulation.get_invested_value
         )
         return self.payouts
