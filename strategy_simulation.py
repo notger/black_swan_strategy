@@ -32,7 +32,7 @@ class SimulationOptions(object):
             out_of_money_factor: float = 0.7,
             r: float = 0.02,
             bet_long: bool = False,
-            min_num_entries: int = 5000,
+            min_num_entries: int = 1000,
             remove_discontinuous: bool = False,
             discontinuity_threshold: int = 1,
     ):
@@ -337,7 +337,7 @@ class Simulation(object):
             import random
             selected_stocks = random.sample(list(self.prices.columns), k=random_subset_size)
         else:
-            selected_stocks = self.sigmasself.prices.columns
+            selected_stocks = self.prices.columns
 
         self.payouts, self.sigmas = self._run(
             self.prices[selected_stocks],
