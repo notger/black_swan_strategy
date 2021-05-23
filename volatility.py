@@ -7,6 +7,7 @@
 #
 
 import numpy as np
+from tqdm import tqdm
 
 
 def sigma_yearly_from_daily_prices(prices):
@@ -38,7 +39,7 @@ def sigma_yearly_from_daily_prices(prices):
     # This means we can't just vectorise the whole matrix, but have to go stock by stock:
     # TODO: Speed this up, this is very slow, due to the element-wise cumulative calculation!
     sigma = np.zeros(prices.shape)
-    for stock in range(N_stocks):
+    for stock in tqdm(range(N_stocks), total=N_stocks):
         for day in range(1, N_days):
             # The following is going to be a bit ugly to parse:
             # - Use where to find the non-nan-values in Rln for that given stock.

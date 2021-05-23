@@ -4,6 +4,7 @@ Black Swan Strategy simulation to validate whether we should do it.
 Usage:
 ============================================================
 1. Install all requirements from requirements.txt
+2. Add BLACK_SWAN_PATH to env vars and let it point to this directory.
 2. Run the automated tests with python3 -m unittest discover tests
 3. Run the Black-Scholes-tests with python3 black_scholes_model.py and assess validity.
 4. Run the volatility-tests with python3 volatility.py adn assess validity.
