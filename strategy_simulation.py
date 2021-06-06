@@ -35,6 +35,7 @@ class SimulationOptions(object):
             min_num_entries: int = 1000,
             remove_discontinuous: bool = False,
             discontinuity_threshold: int = 1,
+            path_to_price_files: str = os.environ.get('BLACK_SWAN_PATH', "") + "prices",
     ):
         """
         Please also see the function load_stock_prices for an explanation.
@@ -52,6 +53,7 @@ class SimulationOptions(object):
                                 Only relevant during loading of the stock prices!
         :param remove_discontinuous: Should we remove stocks which have missing values in between?
         :param discontinuity_threshold: If those many occur, we remove.
+        :param path_to_price_files: Path to the price files.
         """
         self.horizon = int(horizon)
         self.minimum_maturity = minimum_maturity
@@ -61,16 +63,17 @@ class SimulationOptions(object):
         self.min_num_entries = int(min_num_entries)
         self.remove_discontinuous = remove_discontinuous
         self.discontinuity_threshold = discontinuity_threshold
+        self.path_to_price_files = path_to_price_files
 
     def __str__(self):
         return str(self.__dict__)
 
 
 class Simulation(object):
-    def __init__(self, options: SimulationOptions = SimulationOptions(), path: str = "prices"):
+    def __init__(self, options: SimulationOptions = SimulationOptions()):
         self.options = options
         self.prices = self.load_stock_prices(
-            path,
+            options.path_to_price_files,
             min_num_entries=options.min_num_entries,
             remove_discontinuous=options.remove_discontinuous,
             discontinuity_threshold=options.discontinuity_threshold
@@ -96,7 +99,13 @@ class Simulation(object):
         return lying_in_between.sum() >= threshold
 
     @staticmethod
-    def load_stock_prices(path="", min_num_entries=5000, verbose = True, remove_discontinuous=False, discontinuity_threshold=1):
+    def load_stock_prices(
+            path="",
+            min_num_entries=5000,
+            verbose = True,
+            remove_discontinuous=False,
+            discontinuity_threshold=1
+    ):
         """
         Loads all CSVs in a path and extracts the closing-day prices including the dates.
         From this, it constructs a DataFrame with one column per stock and the date as index.
@@ -115,6 +124,7 @@ class Simulation(object):
         status = ""
         num_rejected = 0
 
+        # No error handling for the following load, as there is no way to recover if that fails.
         for dir_path, dir_names, file_names in os.walk(path):
             for k, f in enumerate(file_names):
                 raw = pd.read_csv(os.path.join(dir_path, f))[['Date', 'Close']].set_index('Date').rename(mapper={'Close': f[:-4]}, axis=1)
