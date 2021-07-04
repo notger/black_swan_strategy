@@ -131,10 +131,7 @@ class Simulation(object):
 
                 # Store data, if the file contains enough entries for us:
                 if len(raw) >= min_num_entries:
-                    if k == 0:
-                        df = raw
-                    else:
-                        df = df.merge(raw, on='Date', how='outer')
+                    df = raw if k == 0 else df.merge(raw, on='Date', how='outer')
                 else:
                     num_rejected += 1
 
@@ -159,8 +156,7 @@ class Simulation(object):
             len(df.query('year > 0')),
         )
 
-        df = df.query('year > 0')
-        df.drop('year', axis=1, inplace=True)
+        df = df.query('year > 0').drop('year', axis=1)
 
         # Now we have to filter for non-continuous time-lines:
         if remove_discontinuous:
