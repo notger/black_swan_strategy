@@ -227,6 +227,9 @@ class Simulation(object):
         except AssertionError as e:
             raise e
 
+        if prices[index] == np.nan:
+            raise ValueError(f'Calculation requested for non-existing stock-price = np.nan at index {index}.')
+
         # Calculate the strike price at which we want to buy the option.
         strike_price = (2 - out_of_money_factor) * prices[index] if bet_long else out_of_money_factor * prices[index]
 
@@ -241,7 +244,8 @@ class Simulation(object):
         )
 
         # As we are going to divide by the option price later to get the ROI, it better be noticeably
-        # above zero. Otherwise throw a value-error:
+        # above zero. Also, an option price very close to zero is indicative of a stock price very close
+        # to zero. To be safe and operate in sane regions, we will not trade on this:
         if option_price < MIN_OPTION_PRICE:
             #raise ValueError(f"Option price {option_price} is below threshold {MIN_OPTION_PRICE}.")
             return np.nan
@@ -289,6 +293,8 @@ class Simulation(object):
 
         # Then extract the values and call the ROI-calculation for investing one given day:
         payouts = np.empty_like(prices.values)
+        payouts[:] = np.nan
+
         for stock_idx, stock in tqdm(enumerate(prices.columns), total=len(prices.columns)):
             # We do not want to start trading right away, when a stock becomes available. So we need to find out
             # the "date of birth" for a stock (which is the minimum index where an isna-comparison changes from
@@ -299,6 +305,7 @@ class Simulation(object):
             date_of_stock_trading_start = np.argmin(prices[stock].isna().values)
             #trading_start_idx = prices.index.get_loc(date_of_stock_trading_start) + options.minimum_maturity
             trading_start_idx = date_of_stock_trading_start + options.minimum_maturity
+
             for k in range(trading_start_idx, len(sigmas)):
                 try:
                     payouts[k, stock_idx] = get_invested_value(
@@ -311,7 +318,7 @@ class Simulation(object):
                         bet_long=options.bet_long,
                     )
                 except AssertionError as a:
-                    # Raise and enhanced assertion error with info that was not availabe within the
+                    # Raise and enhanced assertion error with info that was not available within the
                     # get_invested_value-function:
                     s = f'Encountered AssertionError for improper shape of vectors ' \
                         f'prices/sigmas for {stock} (idx: {stock_idx}) in step {k}: {a}\n'
@@ -327,6 +334,7 @@ class Simulation(object):
                     raise ValueError(s)
                 except Exception as e:
                     raise Exception("Unknown exception raised.")
+
         pay_outs = pd.DataFrame(payouts, index=sigmas.index, columns=sigmas.columns)
 
         # Store the results in a separate dataframe, where entries are nan where we could not calculate the ROI.
